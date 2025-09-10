@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.1.0
+// @version      1.1.1
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -72,10 +72,7 @@
 
   function adjustChat() {
     if (document.fullscreenElement) return;
-
-    if (document.querySelector('.channel-root__player--offline')) {
-      return;
-    }
+    if (document.querySelector('.channel-root__player--offline')) return;
 
     const player = document.querySelector('.video-player__container') || document.querySelector('.persistent-player');
     if (!player) return;
