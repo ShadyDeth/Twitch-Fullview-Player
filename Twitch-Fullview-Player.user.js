@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.1.1
+// @version      1.2.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -38,6 +38,7 @@
     .video-player__container {
       max-height: calc(100vh - var(--twt-nav-h)) !important;
       aspect-ratio: 16 / 9 !important;
+      z-index: 10 !important;
     }
 
     .channel-root__right-column.channel-root__right-column--expanded {
@@ -58,6 +59,10 @@
 
     [aria-label="Theatre Mode (alt+t)"] {
       display: none !important;
+    }
+
+    .channel-root__info {
+      overflow-anchor: none !important;
     }
   `;
 
@@ -81,9 +86,14 @@
     const info = document.querySelector('.channel-root__info');
 
     if (info) {
-      const playerWidth = player.getBoundingClientRect().width;
-      info.style.width = `${playerWidth}px`;
-      info.style.marginTop = `calc(100vh - 50px)`;
+      setTimeout(() => {
+        if (!document.fullscreenElement && document.body.contains(info)) {
+          info.style.overflowAnchor = "none";
+          const playerWidth = player.getBoundingClientRect().width;
+          info.style.width = `${playerWidth}px`;
+          info.style.marginTop = `calc(100vh - 50px)`;
+        }
+      }, 2000);
     }
 
     if (chat) {
