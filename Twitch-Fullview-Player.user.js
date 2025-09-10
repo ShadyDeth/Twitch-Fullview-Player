@@ -2,10 +2,10 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.0.0
+// @version      1.1.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
-// @updateURL    https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.js
+// @updateURL    https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
 // @icon         https://www.google.com/s2/favicons?domain=twitch.tv
 // @match        *://www.twitch.tv/*
 // @grant        none
@@ -51,6 +51,10 @@
       aspect-ratio: auto !important;
     }
 
+    :fullscreen .channel-root__info {
+      display: none !important;
+    }
+
     [aria-label="Theatre Mode (alt+t)"] {
       display: none !important;
     }
@@ -68,17 +72,23 @@
   function adjustChat() {
     if (document.fullscreenElement) return;
 
-    const player = document.querySelector('.video-player__container');
+    if (document.querySelector('.channel-root__player--offline')) {
+      return;
+    }
+
+    const player = document.querySelector('.video-player__container') || document.querySelector('.persistent-player');
+    if (!player) return;
+
     const chat = document.querySelector('.channel-root__right-column.channel-root__right-column--expanded');
     const info = document.querySelector('.channel-root__info');
 
-    if (player && info) {
+    if (info) {
       const playerWidth = player.getBoundingClientRect().width;
       info.style.width = `${playerWidth}px`;
       info.style.marginTop = `calc(100vh - 50px)`;
     }
 
-    if (player && chat) {
+    if (chat) {
       const windowWidth = window.innerWidth;
       const playerWidth = player.getBoundingClientRect().width;
       let chatWidthPx = Math.max(280, windowWidth - playerWidth);
