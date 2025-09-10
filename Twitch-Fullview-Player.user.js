@@ -5,6 +5,7 @@
 // @version      1.1.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
+// @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
 // @updateURL    https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
 // @icon         https://www.google.com/s2/favicons?domain=twitch.tv
 // @match        *://www.twitch.tv/*
