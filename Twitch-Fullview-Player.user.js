@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.2.2
+// @version      1.2.3
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -115,13 +115,8 @@
     }
   }
 
-  function removeTheaterButton() {
-    const btn = document.querySelector('[aria-label="Theatre Mode (alt+t)"]');
-    if (btn) btn.remove();
-  }
-
   document.addEventListener('keydown', (e) => {
-    if ((e.altKey && e.key.toLowerCase() === 't') || (e.shiftKey && e.key.toLowerCase() === 't')) {
+    if (e.altKey && e.key.toLowerCase() === 't') {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -134,6 +129,5 @@
 
   new MutationObserver(() => {
     if (!document.fullscreenElement) adjustChat();
-    removeTheaterButton();
   }).observe(document.body, { childList: true, subtree: true });
 })();
