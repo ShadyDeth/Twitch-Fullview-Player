@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.2.0
+// @version      1.2.1
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -53,7 +53,8 @@
       aspect-ratio: auto !important;
     }
 
-    :fullscreen .channel-root__info {
+    :fullscreen .channel-root__info,
+    :fullscreen .top-nav {
       display: none !important;
     }
 
