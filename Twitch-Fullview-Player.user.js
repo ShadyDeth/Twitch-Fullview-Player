@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.2.3
+// @version      1.3.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -64,6 +64,10 @@
     .channel-root__info {
       overflow-anchor: none !important;
     }
+
+    .toggle-visibility__right-column--expanded {
+      transform: none !important;
+    }
   `;
 
   function ensureStyle() {
@@ -76,13 +80,13 @@
   }
 
   function adjustChat() {
-    if (document.fullscreenElement) return;
     if (document.querySelector('.channel-root__player--offline')) return;
 
     const player = document.querySelector('.video-player__container') || document.querySelector('.persistent-player');
     if (!player) return;
 
     const chat = document.querySelector('.channel-root__right-column.channel-root__right-column--expanded');
+    const toggle = document.querySelector('.toggle-visibility__right-column--expanded');
     const info = document.querySelector('.channel-root__info');
 
     if (info) {
@@ -96,23 +100,43 @@
       }, 2000);
     }
 
-    if (chat) {
+    if (chat || toggle) {
       const windowWidth = window.innerWidth;
       const playerWidth = player.getBoundingClientRect().width;
       let chatWidthPx = Math.max(280, windowWidth - playerWidth);
       const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
       const chatWidthRem = chatWidthPx / rootFontSize;
+      const chatTransform = `translateX(-${chatWidthRem}rem) translateZ(0)`;
 
-      chat.style.width = `${chatWidthPx}px`;
-      chat.style.maxWidth = `${chatWidthPx}px`;
-      chat.style.flex = `0 0 ${chatWidthPx}px`;
-      chat.style.setProperty(
-        'transform',
-        `translateX(-${chatWidthRem}rem) translateZ(0)`,
-        'important'
-      );
-      chat.style.transition = 'none';
+      if (chat) {
+        chat.style.width = `${chatWidthPx}px`;
+        chat.style.maxWidth = `${chatWidthPx}px`;
+        chat.style.flex = `0 0 ${chatWidthPx}px`;
+        chat.style.setProperty('transform', chatTransform, 'important');
+        chat.style.transition = 'none';
+      }
+
+      if (toggle && !document.fullscreenElement) {
+        toggle.style.setProperty('transform', chatTransform, 'important');
+        toggle.style.transition = 'none';
+      }
     }
+  }
+
+  function forceScrollTopAdaptive() {
+    let attempts = 0;
+    const maxAttempts = 10;
+    let active = true;
+    const cancel = () => { active = false; };
+    ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(evt => {
+      window.addEventListener(evt, cancel, { once: true, capture: true });
+    });
+    const interval = setInterval(() => {
+      if (!active) { clearInterval(interval); return; }
+      window.scrollTo(0, 0);
+      attempts++;
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 500);
   }
 
   document.addEventListener('keydown', (e) => {
@@ -124,7 +148,10 @@
 
   ensureStyle();
   adjustChat();
-  window.addEventListener('load', () => setTimeout(adjustChat, 1200));
+  window.addEventListener('load', () => {
+    setTimeout(adjustChat, 1200);
+    setTimeout(forceScrollTopAdaptive, 500);
+  });
   window.addEventListener('resize', adjustChat);
 
   new MutationObserver(() => {
