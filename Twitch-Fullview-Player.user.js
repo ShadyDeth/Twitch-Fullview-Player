@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.4.1
+// @version      1.5.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -16,10 +16,34 @@
 (function () {
   'use strict';
 
+  const SIDENAV_HOVER_ENABLED = true; // set to false to always hide side-nav
+
   const css = `
     :root { --twt-nav-h: 5rem; }
-    .side-nav { display: none !important; }
 
+    .side-nav {
+      ${SIDENAV_HOVER_ENABLED
+        ? `
+      position: fixed !important;
+      top: var(--twt-nav-h);
+      left: 0;
+      height: calc(100vh - var(--twt-nav-h));
+      transform: translateX(-100%) !important;
+      transition: transform 200ms ease !important;
+      z-index: 2001 !important;
+      pointer-events: none;`
+        : `
+      display: none !important;`
+      }
+    }
+    ${SIDENAV_HOVER_ENABLED ? `
+    .side-nav.twp-visible {
+      transform: translateX(0) !important;
+      pointer-events: auto;
+    }
+    :fullscreen .side-nav { display: none !important; }
+    ` : ''}
+    
     @media screen and (min-width: 920px) {
       .channel-root--hold-chat + .persistent-player,
       .channel-root--watch-chat + .persistent-player,
@@ -72,12 +96,47 @@
   `;
 
   function ensureStyle() {
-    if (!document.getElementById('twitch-layout-fix-style')) {
-      const style = document.createElement('style');
+    let style = document.getElementById('twitch-layout-fix-style');
+    if (!style) {
+      style = document.createElement('style');
       style.id = 'twitch-layout-fix-style';
       style.textContent = css;
       document.head.appendChild(style);
     }
+  }
+
+  function enableSideNavReveal() {
+    if (!SIDENAV_HOVER_ENABLED) return;
+    let visible = false;
+
+    document.addEventListener('mousemove', (e) => {
+      if (document.fullscreenElement) return;
+      const sideNav = document.querySelector('.side-nav');
+      if (!sideNav) return;
+
+      const isNearLeft = e.clientX <= 50;
+      const isBottomExcluded = e.clientY >= (window.innerHeight - 80);
+
+      if (isNearLeft && !isBottomExcluded) {
+        if (!visible) {
+          sideNav.classList.add('twp-visible');
+          visible = true;
+        }
+      } else {
+        if (visible && !sideNav.matches(':hover')) {
+          sideNav.classList.remove('twp-visible');
+          visible = false;
+        }
+      }
+    });
+
+    document.addEventListener('mouseleave', () => {
+      const sideNav = document.querySelector('.side-nav');
+      if (sideNav) {
+        sideNav.classList.remove('twp-visible');
+      }
+      visible = false;
+    });
   }
 
   function adjustChat() {
@@ -140,6 +199,7 @@
   }, true);
 
   ensureStyle();
+  enableSideNavReveal();
   adjustChat();
   window.addEventListener('load', () => setTimeout(adjustChat, 1200));
   window.addEventListener('resize', adjustChat);
