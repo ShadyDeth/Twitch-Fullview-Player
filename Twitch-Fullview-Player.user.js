@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.4.0
+// @version      1.4.1
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -10,6 +10,7 @@
 // @icon         https://www.google.com/s2/favicons?domain=twitch.tv
 // @match        *://www.twitch.tv/*
 // @grant        none
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
