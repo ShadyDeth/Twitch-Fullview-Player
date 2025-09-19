@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.3.0
+// @version      1.4.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -123,21 +123,13 @@
     }
   }
 
-  function forceScrollTopAdaptive() {
-    let attempts = 0;
-    const maxAttempts = 10;
-    let active = true;
-    const cancel = () => { active = false; };
-    ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(evt => {
-      window.addEventListener(evt, cancel, { once: true, capture: true });
-    });
-    const interval = setInterval(() => {
-      if (!active) { clearInterval(interval); return; }
-      window.scrollTo(0, 0);
-      attempts++;
-      if (attempts >= maxAttempts) clearInterval(interval);
-    }, 500);
-  }
+  const origFocus = HTMLElement.prototype.focus;
+  HTMLElement.prototype.focus = function () {
+    if (this.matches('h1.tw-title, h1.CoreText-sc-1txzju1-0.ScTitleText-sc-d9mj2s-0.tw-title')) {
+      return;
+    }
+    return origFocus.apply(this, arguments);
+  };
 
   document.addEventListener('keydown', (e) => {
     if (e.altKey && e.key.toLowerCase() === 't') {
@@ -148,10 +140,7 @@
 
   ensureStyle();
   adjustChat();
-  window.addEventListener('load', () => {
-    setTimeout(adjustChat, 1200);
-    setTimeout(forceScrollTopAdaptive, 500);
-  });
+  window.addEventListener('load', () => setTimeout(adjustChat, 1200));
   window.addEventListener('resize', adjustChat);
 
   new MutationObserver(() => {
