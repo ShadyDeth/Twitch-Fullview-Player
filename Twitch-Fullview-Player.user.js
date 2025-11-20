@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.6.0
+// @version      1.7.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -18,6 +18,7 @@
 
   const SIDENAV_HOVER_ENABLED = true; // set to false to hide left side-nav
   const BOOTSTRAP_TIMEOUT_MS = 6000;
+  const INIT_DELAY_MS = 0; // adjust delay if layout fails to change
 
   const BAD_STATUS_SELECTOR = `
     .channel-status-info.channel-status-info--offline,
@@ -87,6 +88,7 @@
   let initialized = false;
   let disabledForStatus = false;
   let adjustScheduled = false;
+  let pendingInitTimeout = null;
 
   function ensureStyle() {
     let style = document.getElementById('twitch-layout-fix-style');
@@ -227,20 +229,43 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
+  function scheduleInitWithDelay() {
+    if (pendingInitTimeout || initialized || disabledForStatus) return;
+    pendingInitTimeout = setTimeout(() => {
+      pendingInitTimeout = null;
+      if (initialized || disabledForStatus) return;
+      if (isBadStatus()) {
+        disabledForStatus = true;
+        return;
+      }
+      if (hasLiveWatchLayout()) initFullview();
+    }, INIT_DELAY_MS);
+  }
+
   function bootstrap() {
     if (!document.documentElement) return;
     let observer;
     const checkState = () => {
       if (initialized || disabledForStatus) {
-        if (observer) observer.disconnect();
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
         return;
       }
       if (isBadStatus()) {
         disabledForStatus = true;
-        if (observer) observer.disconnect();
+        if (observer) {
+          observer.disconnect();
+          observer = null;
+        }
+        if (pendingInitTimeout) {
+          clearTimeout(pendingInitTimeout);
+          pendingInitTimeout = null;
+        }
         return;
       }
-      if (hasLiveWatchLayout()) initFullview();
+      if (hasLiveWatchLayout()) scheduleInitWithDelay();
     };
     observer = new MutationObserver(checkState);
     observer.observe(document.documentElement, { childList: true, subtree: true });
