@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.8.0
+// @version      1.8.1
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -17,6 +17,10 @@
   'use strict';
 
   const SIDENAV_HOVER_ENABLED = true; // Set to false to disable side nav reveal on hover
+  const PAGE_START = (typeof performance !== 'undefined' && performance.now)
+    ? performance.now()
+    : Date.now();
+  const SAFE_FALLBACK_DELAY_MS = 800; // only allow fallback after this long
 
   const css = `
     :root { --twt-nav-h: 5rem; }
@@ -78,10 +82,15 @@
       aspect-ratio: auto !important;
     }
 
-    :fullscreen .channel-root__info,
-    :fullscreen [data-a-target="right-column__toggle-collapse-btn"],
-    [aria-label="Theatre Mode (alt+t)"] 
-    {
+    :fullscreen .channel-root__info {
+      display: none !important;
+    }
+
+    :fullscreen [data-a-target="right-column__toggle-collapse-btn"] {
+      display: none !important;
+    }
+
+    [aria-label="Theatre Mode (alt+t)"] {
       display: none !important;
     }
 
@@ -116,13 +125,22 @@
     if (document.querySelector('[data-a-target="animated-channel-viewers-count"]')) return true;
     if (document.querySelector('.live-channel-stream-information')) return true;
 
-    // Fast fallback: player + chat present on /username with no offline markers
-    const playerLike = document.querySelector('.video-player__container, .persistent-player');
-    const chatColumn = document.querySelector(
-      '.channel-root__right-column.channel-root__right-column--expanded'
-    );
-    if (playerLike && chatColumn) return true;
+    // ---- Safe fallback: only after a short delay, and only if player+chat exist,
+    // with NO offline markers (already checked above).
+    const now = (typeof performance !== 'undefined' && performance.now)
+      ? performance.now()
+      : Date.now();
+    const elapsed = now - PAGE_START;
 
+    if (elapsed > SAFE_FALLBACK_DELAY_MS) {
+      const playerLike = document.querySelector('.video-player__container, .persistent-player');
+      const chatColumn = document.querySelector('.channel-root__right-column.channel-root__right-column--expanded');
+      if (playerLike && chatColumn) {
+        return true;
+      }
+    }
+
+    // If we don't see explicit live markers and safe fallback didn't trigger, treat as NOT live.
     return false;
   }
 
@@ -211,8 +229,8 @@
     if (info) {
       setTimeout(() => {
         if (!document.fullscreenElement && document.body.contains(info)) {
-          info.style.overflowAnchor = 'none';
           const playerWidth = player.getBoundingClientRect().width;
+          info.style.overflowAnchor = 'none';
           info.style.width = `${playerWidth}px`;
           info.style.marginTop = 'calc(100vh - 50px)';
         }
