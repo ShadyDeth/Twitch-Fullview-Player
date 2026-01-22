@@ -5,6 +5,8 @@
 
 ![Preview 1440p Monitor](https://raw.githubusercontent.com/ShadyDeth/Twitch-Fullview-Player/main/images/preview.png)
 
-**Hovering over the left side nav (Can be disabled to be hidden all the time in code)** `const SIDENAV_HOVER_ENABLED = false;`
+**Hovering over the left side nav**
+
+Can be disabled to be hidden all the time in code: `const SIDENAV_HOVER_ENABLED = false;`
 
 ![Preview With side-nav](https://raw.githubusercontent.com/ShadyDeth/Twitch-Fullview-Player/main/images/preview2.png)
