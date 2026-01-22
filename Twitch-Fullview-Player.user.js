@@ -2,7 +2,7 @@
 // @name         Twitch Fullview Player
 // @namespace    https://github.com/ShadyDeth/
 // @homepageURL  https://github.com/ShadyDeth/Twitch-Fullview-Player
-// @version      1.8.1
+// @version      1.9.0
 // @description  Twitch video player that takes up the full view of the web page with chat
 // @author       ShadyDeth
 // @downloadURL  https://github.com/ShadyDeth/Twitch-Fullview-Player/raw/main/Twitch-Fullview-Player.user.js
@@ -16,17 +16,24 @@
 (function () {
   'use strict';
 
-  const SIDENAV_HOVER_ENABLED = true; // Set to false to disable side nav reveal on hover
+  // --------- CONFIGURATION ---------
+  const CONFIG = {
+    SIDENAV_HOVER_ENABLED: true, // Set to false to disable side nav reveal on hover
+    SAFE_FALLBACK_DELAY_MS: 800, // Only allow fallback detection after this delay
+    CHAT_MIN_WIDTH: 280,         // Minimum chat width in pixels
+    INFO_PANEL_OFFSET: '50px',   // Offset for channel info panel
+    RESIZE_DEBOUNCE_MS: 150,     // Debounce delay for resize events
+  };
+
   const PAGE_START = (typeof performance !== 'undefined' && performance.now)
     ? performance.now()
     : Date.now();
-  const SAFE_FALLBACK_DELAY_MS = 800; // only allow fallback after this long
 
   const css = `
     :root { --twt-nav-h: 5rem; }
 
     .side-nav {
-      ${SIDENAV_HOVER_ENABLED
+      ${CONFIG.SIDENAV_HOVER_ENABLED
         ? `
       position: fixed !important;
       top: var(--twt-nav-h);
@@ -40,7 +47,7 @@
       display: none !important;`
       }
     }
-    ${SIDENAV_HOVER_ENABLED ? `
+    ${CONFIG.SIDENAV_HOVER_ENABLED ? `
     .side-nav.twp-visible {
       transform: translateX(0) !important;
       pointer-events: auto;
@@ -103,7 +110,24 @@
     }
   `;
 
-  // --------- HELPERS ---------
+  // --------- UTILITIES ---------
+
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  }
+
+  function getElapsedTime() {
+    const now = (typeof performance !== 'undefined' && performance.now)
+      ? performance.now()
+      : Date.now();
+    return now - PAGE_START;
+  }
+
+  // --------- DETECTION ---------
 
   function isChannelRootPath() {
     const path = location.pathname.replace(/\/+$/, '');
@@ -125,14 +149,10 @@
     if (document.querySelector('[data-a-target="animated-channel-viewers-count"]')) return true;
     if (document.querySelector('.live-channel-stream-information')) return true;
 
-    // ---- Safe fallback: only after a short delay, and only if player+chat exist,
-    // with NO offline markers (already checked above).
-    const now = (typeof performance !== 'undefined' && performance.now)
-      ? performance.now()
-      : Date.now();
-    const elapsed = now - PAGE_START;
+    // Safe fallback: only after delay, if player+chat exist, with NO offline markers
+    const elapsed = getElapsedTime();
 
-    if (elapsed > SAFE_FALLBACK_DELAY_MS) {
+    if (elapsed > CONFIG.SAFE_FALLBACK_DELAY_MS) {
       const playerLike = document.querySelector('.video-player__container, .persistent-player');
       const chatColumn = document.querySelector('.channel-root__right-column.channel-root__right-column--expanded');
       if (playerLike && chatColumn) {
@@ -140,7 +160,7 @@
       }
     }
 
-    // If we don't see explicit live markers and safe fallback didn't trigger, treat as NOT live.
+    // If we don't see explicit live markers and safe fallback didn't trigger, treat as NOT live
     return false;
   }
 
@@ -180,9 +200,10 @@
   // --------- SIDE NAV REVEAL ---------
 
   function enableSideNavReveal() {
-    if (!SIDENAV_HOVER_ENABLED) return;
+    if (!CONFIG.SIDENAV_HOVER_ENABLED) return;
 
     let visible = false;
+    let sideNavHoverActive = false;
 
     document.addEventListener('mousemove', (e) => {
       if (document.fullscreenElement) return;
@@ -190,7 +211,7 @@
       if (!sideNav) return;
 
       const isNearLeft = e.clientX <= 50;
-      const isBottomExcluded = e.clientY >= (window.innerHeight - 80);
+      const isBottomExcluded = e.clientY >= (window.innerHeight - 100);
 
       if (isNearLeft && !isBottomExcluded) {
         if (!visible) {
@@ -205,6 +226,7 @@
       }
     });
 
+    // Handle mouse leaving the document
     document.addEventListener('mouseleave', () => {
       const sideNav = document.querySelector('.side-nav');
       if (sideNav) {
@@ -216,6 +238,55 @@
 
   // --------- MAIN LAYOUT UPDATE ---------
 
+  function updateInfoPanel(info, player) {
+    if (!info || !player) return;
+
+    const applyInfoWidth = () => {
+      if (document.fullscreenElement || !document.body.contains(info)) return;
+
+      const playerWidth = player.getBoundingClientRect().width;
+      if (playerWidth > 0) {
+        info.style.overflowAnchor = 'none';
+        info.style.width = `${playerWidth}px`;
+        info.style.marginTop = `calc(100vh - ${CONFIG.INFO_PANEL_OFFSET})`;
+      }
+    };
+
+    // Double requestAnimationFrame to ensure layout has settled
+    requestAnimationFrame(() => {
+      requestAnimationFrame(applyInfoWidth);
+    });
+  }
+
+  function updateChatPosition(chat, toggle, supportPanel, player) {
+    const windowWidth = window.innerWidth;
+    const playerWidth = player.getBoundingClientRect().width;
+    const chatWidthPx = Math.max(CONFIG.CHAT_MIN_WIDTH, windowWidth - playerWidth);
+    const rootFontSize =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const chatWidthRem = chatWidthPx / rootFontSize;
+    const chatTransform = `translateX(-${chatWidthRem}rem) translateZ(0)`;
+
+    if (chat) {
+      chat.style.width = `${chatWidthPx}px`;
+      chat.style.maxWidth = `${chatWidthPx}px`;
+      chat.style.flex = `0 0 ${chatWidthPx}px`;
+      chat.style.setProperty('transform', chatTransform, 'important');
+      chat.style.transition = 'none';
+    }
+
+    if (toggle) {
+      toggle.style.setProperty('transform', chatTransform, 'important');
+      toggle.style.transition = 'none';
+    }
+
+    if (supportPanel) {
+      supportPanel.style.setProperty('z-index', '3002', 'important');
+      supportPanel.style.setProperty('transform', chatTransform, 'important');
+      supportPanel.style.pointerEvents = 'auto';
+    }
+  }
+
   function updateLayout() {
     const live = isLiveChannel();
     ensureStyle(live);
@@ -225,45 +296,14 @@
     const { player, chat, toggle, info, supportPanel } = getLayoutElements();
     if (!player) return;
 
-    // Channel info bar width / push-down
+    // Update channel info bar width / push-down
     if (info) {
-      setTimeout(() => {
-        if (!document.fullscreenElement && document.body.contains(info)) {
-          const playerWidth = player.getBoundingClientRect().width;
-          info.style.overflowAnchor = 'none';
-          info.style.width = `${playerWidth}px`;
-          info.style.marginTop = 'calc(100vh - 50px)';
-        }
-      }, 2000);
+      updateInfoPanel(info, player);
     }
 
+    // Update chat and related elements
     if (chat || toggle) {
-      const windowWidth = window.innerWidth;
-      const playerWidth = player.getBoundingClientRect().width;
-      const chatWidthPx = Math.max(280, windowWidth - playerWidth);
-      const rootFontSize =
-        parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const chatWidthRem = chatWidthPx / rootFontSize;
-      const chatTransform = `translateX(-${chatWidthRem}rem) translateZ(0)`;
-
-      if (chat) {
-        chat.style.width = `${chatWidthPx}px`;
-        chat.style.maxWidth = `${chatWidthPx}px`;
-        chat.style.flex = `0 0 ${chatWidthPx}px`;
-        chat.style.setProperty('transform', chatTransform, 'important');
-        chat.style.transition = 'none';
-      }
-
-      if (toggle) {
-        toggle.style.setProperty('transform', chatTransform, 'important');
-        toggle.style.transition = 'none';
-      }
-
-      if (supportPanel) {
-        supportPanel.style.setProperty('z-index', '3002', 'important');
-        supportPanel.style.setProperty('transform', chatTransform, 'important');
-        supportPanel.style.pointerEvents = 'auto';
-      }
+      updateChatPosition(chat, toggle, supportPanel, player);
     }
   }
 
@@ -296,9 +336,12 @@
 
   // --------- INIT ---------
 
+  let layoutObserver = null;
+
   function initFullview() {
     enableSideNavReveal();
 
+    // Prevent unwanted focus on title elements
     const origFocus = HTMLElement.prototype.focus;
     HTMLElement.prototype.focus = function () {
       if (
@@ -311,6 +354,7 @@
       return origFocus.apply(this, arguments);
     };
 
+    // Block theatre mode hotkey
     document.addEventListener(
       'keydown',
       (e) => {
@@ -322,28 +366,45 @@
       true
     );
 
+    // Initial layout update
     updateLayout();
 
+    // Update on page load with delayed retry
     window.addEventListener('load', () => {
       updateLayout();
       setTimeout(updateLayout, 1200);
     });
 
-    window.addEventListener('resize', updateLayout);
+    // Debounced resize handler
+    window.addEventListener('resize', debounce(updateLayout, CONFIG.RESIZE_DEBOUNCE_MS));
 
+    // Set up MutationObserver once body is available
     const waitForBody = () => {
       if (!document.body) {
         requestAnimationFrame(waitForBody);
         return;
       }
-      new MutationObserver(() => {
+
+      // Disconnect any existing observer
+      if (layoutObserver) {
+        layoutObserver.disconnect();
+      }
+
+      // Create new observer
+      layoutObserver = new MutationObserver(() => {
         if (!document.fullscreenElement) {
           updateLayout();
         }
-      }).observe(document.body, { childList: true, subtree: true });
+      });
+
+      layoutObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
     };
     waitForBody();
   }
 
+  // Start the script
   initFullview();
 })();
